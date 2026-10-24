@@ -1,0 +1,283 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head> 
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#18794e">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Waste Management</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f3f8f4;color:#20352a}
+header{background:linear-gradient(135deg,#116b43,#2a9d66);color:white;text-align:center;padding:30px 15px}
+header .logo{font-size:38px}
+header h1{margin:8px 0;font-size:27px}
+header p{margin:0;line-height:1.5}
+.container{max-width:760px;margin:22px auto;padding:0 14px}
+.card{background:white;padding:20px;margin-bottom:18px;border-radius:15px;box-shadow:0 5px 18px #174b2b12;border:1px solid #e5eee7}
+h2{color:#18794e;margin:0 0 16px}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.stat{padding:18px 10px;border-radius:12px;text-align:center;background:#e7f6ec}
+.stat strong{display:block;font-size:29px;color:#18794e;margin-bottom:7px}
+.stat span{font-size:13px}
+.stat.pending{background:#fff4d8}
+.stat.pending strong{color:#966600}
+.stat.progress{background:#e3efff}
+.stat.progress strong{color:#2059a5}
+.stat.resolved{background:#ddf7e3}
+.stat.resolved strong{color:#17652c}
+label{display:block;margin-top:13px;font-weight:bold;font-size:14px}
+input,textarea,select{width:100%;padding:12px;margin-top:7px;border:1px solid #c9d8cd;border-radius:8px;font-size:15px;background:white}
+input:focus,textarea:focus,select:focus{outline:2px solid #80c99b;border-color:#18794e}
+textarea{min-height:90px;resize:vertical}
+button{border:0;border-radius:8px;padding:12px 15px;cursor:pointer;font-size:14px}
+.submit{background:#18794e;color:white;width:100%;margin-top:18px;font-weight:bold}
+.submit:active{background:#105c39}
+.searchbox{margin-bottom:12px}
+.complaint{border:1px solid #e0ebe2;border-radius:11px;padding:15px;margin-top:12px;overflow-wrap:anywhere;background:#fcfefc}
+.complaint h3{margin:0 0 10px;color:#18794e}
+.complaint p{margin:8px 0;line-height:1.5;font-size:14px}
+.status{display:inline-block;padding:6px 10px;border-radius:20px;background:#fff0c2;color:#765400;font-size:12px;font-weight:bold}
+.status-progress{background:#dcecff;color:#164f91}
+.status-resolved{background:#d9f6df;color:#17652c}
+.small-btn{background:#e6f2e9;color:#205b37;margin-top:10px}
+.delete-btn{background:#ffebeb;color:#a21b1b;margin-top:10px}
+.empty{text-align:center;color:#68786d;padding:15px 0}
+.count-note{font-size:13px;color:#68786d;margin-top:0}
+footer{text-align:center;padding:22px;color:#68786d;font-size:13px}
+@media(min-width:520px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">♻️</div>
+  <h1>Smart Waste Management</h1>
+  <p>A cleaner community starts with you.</p>
+</header>
+
+<main class="container">
+
+<section class="card">
+  <h2>📊 Complaint Dashboard</h2>
+  <div class="stats">
+    <div class="stat"><strong id="totalCount">0</strong><span>Total Complaints</span></div>
+    <div class="stat pending"><strong id="pendingCount">0</strong><span>Submitted</span></div>
+    <div class="stat progress"><strong id="progressCount">0</strong><span>In Progress</span></div>
+    <div class="stat resolved"><strong id="resolvedCount">0</strong><span>Resolved</span></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>📝 Report a Garbage Problem</h2>
+  <form id="complaintForm">
+    <label for="name">Your Name</label>
+    <input id="name" required maxlength="80" placeholder="Enter your name">
+
+    <label for="location">Location</label>
+    <input id="location" required maxlength="150" placeholder="Street, area or landmark">
+
+    <label for="description">Complaint Description</label>
+    <textarea id="description" required maxlength="1000" placeholder="Describe the garbage problem"></textarea>
+
+    <button class="submit" type="submit">Submit Complaint</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>🔎 Find a Complaint</h2>
+  <input class="searchbox" id="searchInput" type="search"
+    placeholder="Search name, location or problem..."
+    aria-label="Search complaints">
+  <p class="count-note" id="searchCount"></p>
+  <div id="complaintList"></div>
+  <button class="small-btn" id="clearSearch" type="button">Clear Search</button>
+  <br>
+  <button class="delete-btn" id="clearBtn" type="button">Clear All Demo Complaints</button>
+</section>
+
+</main>
+
+<footer>Student CSP Project · Smart Waste Management</footer>
+
+<script>
+const STORAGE_KEY = "smartWasteComplaints";
+const form = document.getElementById("complaintForm");
+const complaintList = document.getElementById("complaintList");
+const searchInput = document.getElementById("searchInput");
+let complaints = [];
+
+try {
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+  if (Array.isArray(saved)) {
+    complaints = saved.map(c => ({
+      ...c,
+      status: ["Submitted","In Progress","Resolved"].includes(c.status)
+        ? c.status : "Submitted"
+    }));
+  }
+} catch(e) {
+  complaints = [];
+}
+
+function saveComplaints() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(complaints));
+  } catch(e) {
+    alert("Could not save data in this preview.");
+  }
+}
+
+function updateDashboard() {
+  document.getElementById("totalCount").textContent = complaints.length;
+  document.getElementById("pendingCount").textContent =
+    complaints.filter(c => c.status === "Submitted").length;
+  document.getElementById("progressCount").textContent =
+    complaints.filter(c => c.status === "In Progress").length;
+  document.getElementById("resolvedCount").textContent =
+    complaints.filter(c => c.status === "Resolved").length;
+}
+
+function renderComplaints() {
+  complaintList.innerHTML = "";
+  const query = searchInput.value.trim().toLowerCase();
+
+  const filtered = complaints
+    .map((complaint, index) => ({complaint, index}))
+    .filter(({complaint:c}) =>
+      [c.name, c.location, c.description, c.status]
+        .some(value => String(value || "").toLowerCase().includes(query))
+    );
+
+  document.getElementById("searchCount").textContent =
+    filtered.length + (filtered.length === 1 ? " complaint found" : " complaints found");
+
+  if (filtered.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = complaints.length === 0
+      ? "No complaints submitted yet."
+      : "No matching complaints found.";
+    complaintList.appendChild(empty);
+    updateDashboard();
+    return;
+  }
+
+  filtered.forEach(({complaint:c, index}) => {
+    const item = document.createElement("article");
+    item.className = "complaint";
+
+    const title = document.createElement("h3");
+    title.textContent = "Complaint #" + (index + 1);
+
+    const name = document.createElement("p");
+    name.textContent = "Name: " + c.name;
+
+    const location = document.createElement("p");
+    location.textContent = "Location: " + c.location;
+
+    const description = document.createElement("p");
+    description.textContent = "Problem: " + c.description;
+
+    const badge = document.createElement("span");
+    badge.className = "status" +
+      (c.status === "In Progress" ? " status-progress" :
+       c.status === "Resolved" ? " status-resolved" : "");
+    badge.textContent = c.status;
+
+    const label = document.createElement("label");
+    label.textContent = "Update Status";
+
+    const select = document.createElement("select");
+    select.setAttribute("aria-label", "Update status for complaint " + (index + 1));
+
+    ["Submitted","In Progress","Resolved"].forEach(s => {
+      const option = document.createElement("option");
+      option.value = s;
+      option.textContent = s;
+      select.appendChild(option);
+    });
+
+    select.value = c.status;
+    select.addEventListener("change", () => {
+      complaints[index].status = select.value;
+      saveComplaints();
+      renderComplaints();
+    });
+
+    const del = document.createElement("button");
+    del.className = "delete-btn";
+    del.type = "button";
+    del.textContent = "Delete Complaint";
+    del.addEventListener("click", () => {
+      if (confirm("Delete this complaint?")) {
+        complaints.splice(index, 1);
+        saveComplaints();
+        renderComplaints();
+      }
+    });
+
+    item.append(title, name, location, description, badge, label, select, del);
+    complaintList.appendChild(item);
+  });
+
+  updateDashboard();
+}
+
+form.addEventListener("submit", event => {
+  event.preventDefault();
+  const name = document.getElementById("name").value.trim();
+  const location = document.getElementById("location").value.trim();
+  const description = document.getElementById("description").value.trim();
+
+  if (!name || !location || !description) {
+    alert("Please fill in all fields.");
+    return;
+  }
+
+  complaints.push({
+    name, location, description,
+    status: "Submitted",
+    date: new Date().toLocaleDateString()
+  });
+
+  saveComplaints();
+  form.reset();
+  searchInput.value = "";
+  renderComplaints();
+  alert("Complaint submitted successfully!");
+});
+
+searchInput.addEventListener("input", renderComplaints);
+
+document.getElementById("clearSearch").addEventListener("click", () => {
+  searchInput.value = "";
+  renderComplaints();
+});
+
+document.getElementById("clearBtn").addEventListener("click", () => {
+  if (confirm("Delete all demo complaints?")) {
+    complaints = [];
+    saveComplaints();
+    renderComplaints();
+  }
+});
+
+renderComplaints();
+</script> 
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .then(() => console.log("Service worker registered"))
+      .catch(error => console.log("Service worker error:", error));
+  });
+}
+</script>
+
+</body>
+</html>
+
+        

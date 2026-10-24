@@ -1,0 +1,13 @@
+
+{
+  "name": "Smart Waste Management",
+  "short_name": "Smart Waste",
+  "description": "Report and track garbage complaints",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f8f4",
+  "theme_color": "#18794e"
+}
+  
